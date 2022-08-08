@@ -1,0 +1,4029 @@
+<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
+	<External>null</External>
+	<External>nil</External>
+	<Item class="Folder" referent="RBX18951265CEE74940853E5B6CAE080EBD">
+		<Properties>
+			<BinaryString name="AttributesSerialize"></BinaryString>
+			<string name="Name">CoreGenerator</string>
+			<int64 name="SourceAssetId">-1</int64>
+			<BinaryString name="Tags"></BinaryString>
+		</Properties>
+		<Item class="Script" referent="RBXBA3DAE36A2384FDE9B7D61DC3D7E3327">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<bool name="Disabled">false</bool>
+				<Content name="LinkedSource"><null></null></Content>
+				<string name="Name">CoreGeneratorScript</string>
+				<token name="RunContext">0</token>
+				<string name="ScriptGuid">{31E1AFFE-FD10-46C9-B832-9AC93CC4ED8E}</string>
+				<ProtectedString name="Source"><![CDATA[local VersionInt = "V1.7.0"
+
+local StarterGui = game:GetService("StarterGui")
+local ServerScriptService = game:GetService("ServerScriptService")
+local StarterPlayerScripts = game:GetService("StarterPlayer").StarterPlayerScripts
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
+
+local ToolBar = plugin:CreateToolbar("CoreScript Generator")
+local Selection = game:GetService("Selection")
+local PluginName = "Generator ".. VersionInt
+
+
+
+local CoreTyperButton = ToolBar:CreateButton(PluginName, 
+	"Rapidly generate scripts that disable Roblox's core features such as reset character, chat, etc.", 
+	"http://www.roblox.com/asset/?id=10270469063")
+
+local ChangelogButton = ToolBar:CreateButton("Changelog", 
+	"Official Changelog for the CoreScript Generator plugin. Located inside the ServerStorage on click.", 
+	"http://www.roblox.com/asset/?id=10270416806")
+
+local Opened = false
+
+local MainWidgetInfo = DockWidgetPluginGuiInfo.new(
+	Enum.InitialDockState.Float
+	,false
+	,false
+	,250
+	,420
+	,250
+	,420	
+)
+
+local ChangelogWidgetInfo = DockWidgetPluginGuiInfo.new(
+	Enum.InitialDockState.Float
+	,true
+	,false
+	,500
+	,500
+	,500
+	,500	
+)
+
+local MainWidget = plugin:CreateDockWidgetPluginGui("CoreScript Generator", MainWidgetInfo)
+MainWidget.Title = "CoreScript Generator ".. VersionInt
+
+local Gui = script.Parent.Gui
+Gui.Parent = MainWidget
+
+--local ChangelogGui = script.Parent.ChangelogGui -----------------------------scraped
+--ChangelogGui.Parent = MainWidget --------------------------------------------scraped
+
+---------------------------------------------------------------------------------
+--Detect Light or Dark theme (Studio Settings)
+local GuiColor = settings().Studio.Theme
+
+function checkStudioTheme()
+	if GuiColor.Name == "Light" then
+		Gui.BackgroundColor3 = Color3.fromRGB(177, 183, 250)
+		Gui.ScrollingFrame.PluginInformation.TextColor3 = Color3.fromRGB(0, 0, 0)
+	end
+	
+	if GuiColor.Name == "Dark" then
+		Gui.BackgroundColor3 = Color3.fromRGB(25, 0, 35)
+		Gui.ScrollingFrame.PluginInformation.TextColor3 = Color3.fromRGB(255, 255, 255)	
+	end
+end
+checkStudioTheme()
+---------------------------------------------------------------------------------
+-- Update stuff
+local marketplace = game:GetService("MarketplaceService")
+local pluginId = 10261598834 --Change to plugin's ID.
+local pluginVersion = "Plugin Version: ".. VersionInt.. " (Description inside the plugin)" --Current plugin's version.
+--print(pluginVersion)
+
+local function checkIfUpdated(Announcement)
+	local success, result = pcall(function()
+		return marketplace:GetProductInfo(pluginId)
+	end)
+
+	if success then
+		if result then
+			if result.Description ~= pluginVersion then
+				local UpdateText = Announcement
+				warn(UpdateText)
+				
+			end
+		end
+	else
+		warn(result)
+	end
+end
+checkIfUpdated("CoreScript Generator has a new update available! Be sure to check if you have updated your plugin to the latest version!")
+--task.spawn(function()
+--	while task.wait(120) do --Seconds between each check
+--		checkIfUpdated()
+--	end
+--end)
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+local DisableResetButton = Gui.ScrollingFrame.Buttons.StarterGui.DisableReset
+local DisableLeaderboardButton = Gui.ScrollingFrame.Buttons.StarterGui.DisableLeaderboard
+local DisableChatButton = Gui.ScrollingFrame.Buttons.StarterGui.DisableChat
+local DisableBadgeNotificationButton = Gui.ScrollingFrame.Buttons.StarterGui.DisableBadgeNotification
+
+local DisableTopBarButton = Gui.ScrollingFrame.Buttons.StarterPlayerScripts.DisableTopBar
+
+local DisablePlayerCollisionButton = Gui.ScrollingFrame.Buttons.ServerScriptsService.DisablePlayerCollision
+
+local DisableLoadingScreenButton = Gui.ScrollingFrame.Buttons.ReplicatedFirst.DisableLoadingScreen
+
+local ResetAllbutton = Gui.ScrollingFrame.Buttons.ResetAll
+
+local SourceFolder = Gui.ScrollingFrame.Scripts
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+
+function checkForMainFolder(Location)
+	if not Location:FindFirstChild("CoreScript Generator by Geody Entertainment") then
+		local newFolder = Instance.new("Folder")
+		newFolder.Parent = Location
+		newFolder.Name = "CoreScript Generator by Geody Entertainment"
+		return newFolder
+	end
+end
+
+function createScript(scriptType, scriptName, scriptParent, scriptSource, targetButton)
+	local newScript = Instance.new(scriptType)
+	newScript.Parent = scriptParent
+	newScript.Name = scriptName
+	newScript.Source = scriptSource
+	
+	--targetButton.Text = buttonText
+	targetButton.BorderColor3 = Color3.new(0.247059, 0.411765, 0.623529)
+end
+
+function deleteScript(scriptLocation, targetButton)
+	if scriptLocation.Parent:FindFirstChild(scriptLocation.Name) then
+		scriptLocation:Destroy()
+		--targetButton.Text = buttonText
+		targetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	end
+	
+end
+
+function restoreButtonStatus(targetButton, customParent, WhatToCheck, CustomParentParent)
+	if customParent:FindFirstChild(WhatToCheck) then --autosync buttons status on start
+		targetButton.BorderColor3 = Color3.new(0.247059, 0.411765, 0.623529)
+	else
+		targetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	end
+	
+	
+	--customParent.Parent.ChildRemoved:Connect(function() --autosync button status when folder manually gets deleted via Explorer
+	--	if customParent:FindFirstChild(customParent.Name) then
+	--		targetButton.BorderColor3 = Color3.new(0.247059, 0.411765, 0.623529)
+	--	else
+	--		targetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	--	end
+	--end)
+	
+end
+
+function syncButtonStatus(targetButton, customParent, WhatToCheck, FolderParent, CustomParentParent)
+	customParent.ChildRemoved:Connect(function() --autosync button status when script manually gets deleted via Explorer
+		if customParent:FindFirstChild(WhatToCheck) then
+			targetButton.BorderColor3 = Color3.new(0.247059, 0.411765, 0.623529)
+		else
+			targetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+		end
+	end)
+	
+	--customParent.Parent.ChildRemoved:Connect(function() --autosync button status when folder manually gets deleted via Explorer
+	--	if not customParent:FindFirstChild(customParent.Name) then
+	--		targetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	--		checkForMainFolder(FolderParent)
+	--	end
+	--end)
+end
+-----------------------------------------------------------------------------------------------------------------------------------------
+local MainFolder = checkForMainFolder(StarterGui)
+MainFolder = StarterGui["CoreScript Generator by Geody Entertainment"]
+
+CoreTyperButton.Click:Connect(function()
+	if Opened then
+		MainWidget.Enabled = false
+		Opened = true
+	else
+		MainWidget.Enabled = true
+		Opened = false
+		checkIfUpdated("Just a friendly reminder that CoreScript Generator has a new update available! Be sure to check if you have updated your plugin to the latest version!")
+		checkStudioTheme()
+	end
+end)
+
+ChangelogButton.Click:Connect(function()
+	local newSelection = {}
+	
+	if not ServerStorage:FindFirstChild("[CHANGELOG] CoreScript Generator by Geody Entertainment") then
+		local ChangelogFolder = Instance.new("Folder")
+		ChangelogFolder.Name = "[CHANGELOG] CoreScript Generator by Geody Entertainment"
+		ChangelogFolder.Parent = ServerStorage
+	end
+	local ChangelogFolder = ServerStorage["[CHANGELOG] CoreScript Generator by Geody Entertainment"]
+	local Selected = Selection:Get()
+	
+	if ChangelogFolder:FindFirstChild("Contents") then
+		ChangelogFolder.Contents:Destroy() -- A method to automatically refresh the changelogs on click
+	end
+		
+	local Changelog = Instance.new("Script")
+	Changelog.Name = "Contents"
+	Changelog.Parent = ChangelogFolder
+	Changelog.Source = Gui.ChangelogStuff.ChangelogSource.Source
+	Changelog.Disabled = true
+		
+	table.insert(newSelection, ChangelogFolder)
+	Selection:Set(newSelection)
+end)
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- StarterGui
+
+
+restoreButtonStatus(DisableResetButton, MainFolder, "DisableReset")
+syncButtonStatus(DisableResetButton, MainFolder, "DisableReset", StarterGui)
+DisableResetButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	
+	local Folder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableReset") then
+		
+		createScript("LocalScript", "DisableReset", Folder, SourceFolder.DisableResetSource.Source, DisableResetButton)
+		
+	else
+		
+		deleteScript(Folder.DisableReset, DisableResetButton)
+		
+		
+	end
+end)
+
+restoreButtonStatus(DisableLeaderboardButton, MainFolder, "DisableLeaderboard")
+syncButtonStatus(DisableLeaderboardButton, MainFolder, "DisableLeaderboard", StarterGui)
+DisableLeaderboardButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	local Folder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableLeaderboard") then
+		
+		createScript("LocalScript", "DisableLeaderboard", Folder, SourceFolder.DisableLeaderboardSource.Source, DisableLeaderboardButton)
+		
+	else
+		
+		deleteScript(Folder.DisableLeaderboard, DisableLeaderboardButton)
+		
+	end
+end)
+
+restoreButtonStatus(DisableChatButton, MainFolder, "DisableChat")
+syncButtonStatus(DisableChatButton, MainFolder, "DisableChat", StarterGui)
+DisableChatButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	local Folder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableChat") then
+		
+		createScript("LocalScript", "DisableChat", Folder, SourceFolder.DisableChatSource.Source, DisableChatButton)
+
+	else
+		
+		deleteScript(Folder.DisableChat, DisableChatButton)
+		
+	end
+end)
+
+restoreButtonStatus(DisableBadgeNotificationButton, MainFolder, "DisableBadgeNotification")
+syncButtonStatus(DisableBadgeNotificationButton, MainFolder, "DisableBadgeNotification", StarterGui)
+DisableBadgeNotificationButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	local Folder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableBadgeNotification") then
+
+		createScript("LocalScript", "DisableBadgeNotification", Folder, SourceFolder.DisableBadgeNotificationSource.Source, DisableBadgeNotificationButton)
+
+	else
+
+		deleteScript(Folder.DisableBadgeNotification, DisableBadgeNotificationButton)
+
+	end
+end)
+
+restoreButtonStatus(DisableTopBarButton, MainFolder, "DisableBadgeNotification")
+syncButtonStatus(DisableTopBarButton, MainFolder, "DisableBadgeNotification", StarterGui)
+DisableTopBarButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	local Folder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableTopBar") then
+
+		createScript("LocalScript", "DisableTopBar", Folder, SourceFolder.DisableTopBarSource.Source, DisableTopBarButton)
+
+	else
+
+		deleteScript(Folder.DisableTopBar, DisableTopBarButton)
+
+	end
+end)
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- ServerScriptService
+checkForMainFolder(ServerScriptService)
+local ServerScriptServiceFolder = ServerScriptService["CoreScript Generator by Geody Entertainment"]
+
+restoreButtonStatus(DisablePlayerCollisionButton, ServerScriptServiceFolder, "DisablePlayerCollision")
+syncButtonStatus(DisablePlayerCollisionButton, ServerScriptServiceFolder, "DisablePlayerCollision", ServerScriptService)
+DisablePlayerCollisionButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(ServerScriptService)
+	local Folder = ServerScriptService["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisablePlayerCollision") then
+		
+		createScript("Script", "DisablePlayerCollision", Folder, SourceFolder.DisablePlayerCollisionSource.Source, DisablePlayerCollisionButton)
+		
+	else
+		
+		deleteScript(Folder.DisablePlayerCollision, DisablePlayerCollisionButton)
+		
+	end
+end)
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- StarterPlayerScripts
+checkForMainFolder(StarterPlayerScripts)
+local StarterPlayerScriptFolder = StarterPlayerScripts["CoreScript Generator by Geody Entertainment"]
+
+restoreButtonStatus(DisableTopBarButton, StarterPlayerScriptFolder, "DisableBadgeNotification")
+syncButtonStatus(DisableTopBarButton, StarterPlayerScriptFolder, "DisableBadgeNotification", StarterGui)
+DisableTopBarButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterPlayerScripts)
+	local Folder = StarterPlayerScripts["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableTopBar") then
+
+		createScript("LocalScript", "DisableTopBar", Folder, SourceFolder.DisableTopBarSource.Source, DisableTopBarButton)
+
+	else
+
+		deleteScript(Folder.DisableTopBar, DisableTopBarButton)
+
+	end
+end)
+
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+-- ReplicatedFirst
+checkForMainFolder(ReplicatedFirst)
+local ReplicatedFirstFolder = ReplicatedFirst["CoreScript Generator by Geody Entertainment"]
+
+restoreButtonStatus(DisableLoadingScreenButton, ReplicatedFirst, "DisableLoadingScreen")
+syncButtonStatus(DisableLoadingScreenButton, ReplicatedFirstFolder, "DisableLoadingScreen", ReplicatedFirst)
+DisableLoadingScreenButton.MouseButton1Click:Connect(function()
+	checkForMainFolder(ReplicatedFirst)
+	local Folder = ReplicatedFirst["CoreScript Generator by Geody Entertainment"]
+	if not Folder:FindFirstChild("DisableLoadingScreen") then
+
+		createScript("LocalScript", "DisableLoadingScreen", Folder, SourceFolder.DisableLoadingScreenSource.Source, DisableLoadingScreenButton)
+
+	else
+
+		deleteScript(Folder.DisableLoadingScreen, DisableLoadingScreenButton)
+
+	end
+end)
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+ResetAllbutton.MouseButton1Click:Connect(function()
+	checkForMainFolder(StarterGui)
+	checkForMainFolder(ServerScriptService)
+	local StarterGuiFolder = StarterGui["CoreScript Generator by Geody Entertainment"]
+	local ServerScriptServiceFolder = ServerScriptService["CoreScript Generator by Geody Entertainment"]
+	local StarterPlayerScriptsFolder = StarterPlayerScripts["CoreScript Generator by Geody Entertainment"]
+		
+	StarterGuiFolder:Destroy()
+	ServerScriptServiceFolder:Destroy()
+	StarterPlayerScriptsFolder:Destroy()
+	ReplicatedFirstFolder:Destroy()
+	
+	
+	--DisableChatButton.Text = "Disable Chat"
+	DisableChatButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	--DisableLeaderboardButton.Text = "Disable Leaderboard"
+	DisableLeaderboardButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	--DisableResetButton.Text = "Disable Reset Character"
+	DisableResetButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	--DisablePlayerCollisionButton.Text = "Disable Player Collision"
+	DisablePlayerCollisionButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	DisableBadgeNotificationButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	DisableTopBarButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+	DisableLoadingScreenButton.BorderColor3 = Color3.new(0.105882, 0.164706, 0.207843)
+	
+end)
+
+-----------------------------------------------------------------------------------------------------------------------------------------
+]]></ProtectedString>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+			</Properties>
+		</Item>
+		<Item class="ScreenGui" referent="RBXF937B5354A75443883395313FC2406B1">
+			<Properties>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<bool name="AutoLocalize">true</bool>
+				<int name="DisplayOrder">0</int>
+				<bool name="Enabled">true</bool>
+				<bool name="IgnoreGuiInset">false</bool>
+				<string name="Name">DevelopmentGui</string>
+				<bool name="ResetOnSpawn">true</bool>
+				<Ref name="RootLocalizationTable">null</Ref>
+				<token name="SelectionBehaviorDown">0</token>
+				<token name="SelectionBehaviorLeft">0</token>
+				<token name="SelectionBehaviorRight">0</token>
+				<token name="SelectionBehaviorUp">0</token>
+				<bool name="SelectionGroup">false</bool>
+				<int64 name="SourceAssetId">-1</int64>
+				<BinaryString name="Tags"></BinaryString>
+				<token name="ZIndexBehavior">1</token>
+			</Properties>
+		</Item>
+		<Item class="Frame" referent="RBXA25539C8F3DD42EDB9F898AF0B87E160">
+			<Properties>
+				<bool name="Active">false</bool>
+				<Vector2 name="AnchorPoint">
+					<X>0</X>
+					<Y>0</Y>
+				</Vector2>
+				<BinaryString name="AttributesSerialize"></BinaryString>
+				<bool name="AutoLocalize">true</bool>
+				<token name="AutomaticSize">0</token>
+				<Color3 name="BackgroundColor3">
+					<R>0.400000006</R>
+					<G>0.411764711</G>
+					<B>0.568627477</B>
+				</Color3>
+				<float name="BackgroundTransparency">0</float>
+				<Color3 name="BorderColor3">
+					<R>0.105882362</R>
+					<G>0.164705887</G>
+					<B>0.207843155</B>
+				</Color3>
+				<token name="BorderMode">0</token>
+				<int name="BorderSizePixel">1</int>
+				<bool name="ClipsDescendants">false</bool>
+				<bool name="Draggable">false</bool>
+				<int name="LayoutOrder">0</int>
+				<string name="Name">Gui</string>
+				<Ref name="NextSelectionDown">null</Ref>
+				<Ref name="NextSelectionLeft">null</Ref>
+				<Ref name="NextSelectionRight">null</Ref>
+				<Ref name="NextSelectionUp">null</Ref>
+				<UDim2 name="Position">
+					<XS>0</XS>
+					<XO>0</XO>
+					<YS>0</YS>
+					<YO>0</YO>
+				</UDim2>
+				<Ref name="RootLocalizationTable">null</Ref>
+				<float name="Rotation">0</float>
+				<bool name="Selectable">false</bool>
+				<token name="SelectionBehaviorDown">0</token>
+				<token name="SelectionBehaviorLeft">0</token>
+				<token name="SelectionBehaviorRight">0</token>
+				<token name="SelectionBehaviorUp">0</token>
+				<bool name="SelectionGroup">false</bool>
+				<Ref name="SelectionImageObject">null</Ref>
+				<int name="SelectionOrder">0</int>
+				<UDim2 name="Size">
+					<XS>1</XS>
+					<XO>0</XO>
+					<YS>1</YS>
+					<YO>0</YO>
+				</UDim2>
+				<token name="SizeConstraint">0</token>
+				<int64 name="SourceAssetId">-1</int64>
+				<token name="Style">0</token>
+				<BinaryString name="Tags"></BinaryString>
+				<bool name="Visible">true</bool>
+				<int name="ZIndex">1</int>
+			</Properties>
+			<Item class="ScrollingFrame" referent="RBXB396FD2A7E77400D8B72CDAAF933139C">
+				<Properties>
+					<bool name="Active">true</bool>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<bool name="AutoLocalize">true</bool>
+					<token name="AutomaticCanvasSize">0</token>
+					<token name="AutomaticSize">0</token>
+					<Color3 name="BackgroundColor3">
+						<R>0.400000006</R>
+						<G>0.411764711</G>
+						<B>0.568627477</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">
+						<R>0.105882362</R>
+						<G>0.164705887</G>
+						<B>0.207843155</B>
+					</Color3>
+					<token name="BorderMode">0</token>
+					<int name="BorderSizePixel">0</int>
+					<Content name="BottomImage"><url>rbxasset://textures/ui/Scroll/scroll-bottom.png</url></Content>
+					<Vector2 name="CanvasPosition">
+						<X>0</X>
+						<Y>0</Y>
+					</Vector2>
+					<UDim2 name="CanvasSize">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>1595</YO>
+					</UDim2>
+					<bool name="ClipsDescendants">true</bool>
+					<bool name="Draggable">false</bool>
+					<token name="ElasticBehavior">0</token>
+					<token name="HorizontalScrollBarInset">0</token>
+					<int name="LayoutOrder">0</int>
+					<Content name="MidImage"><url>rbxasset://textures/ui/Scroll/scroll-middle.png</url></Content>
+					<string name="Name">ScrollingFrame</string>
+					<Ref name="NextSelectionDown">null</Ref>
+					<Ref name="NextSelectionLeft">null</Ref>
+					<Ref name="NextSelectionRight">null</Ref>
+					<Ref name="NextSelectionUp">null</Ref>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>0</YO>
+					</UDim2>
+					<Ref name="RootLocalizationTable">null</Ref>
+					<float name="Rotation">0</float>
+					<Color3 name="ScrollBarImageColor3">
+						<R>0</R>
+						<G>0</G>
+						<B>0</B>
+					</Color3>
+					<float name="ScrollBarImageTransparency">0</float>
+					<int name="ScrollBarThickness">6</int>
+					<token name="ScrollingDirection">4</token>
+					<bool name="ScrollingEnabled">true</bool>
+					<bool name="Selectable">true</bool>
+					<token name="SelectionBehaviorDown">0</token>
+					<token name="SelectionBehaviorLeft">0</token>
+					<token name="SelectionBehaviorRight">0</token>
+					<token name="SelectionBehaviorUp">0</token>
+					<bool name="SelectionGroup">true</bool>
+					<Ref name="SelectionImageObject">null</Ref>
+					<int name="SelectionOrder">0</int>
+					<UDim2 name="Size">
+						<XS>1</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>0</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+					<Content name="TopImage"><url>rbxasset://textures/ui/Scroll/scroll-top.png</url></Content>
+					<token name="VerticalScrollBarInset">0</token>
+					<token name="VerticalScrollBarPosition">0</token>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="Folder" referent="RBXB75A92A0AC6D4457B109ABFC63AB289F">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<string name="Name">Buttons</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+					<Item class="Folder" referent="RBXF16CE30E603946E899ED77FC0A158B50">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<string name="Name">StarterGui</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+						<Item class="TextButton" referent="RBXBF660E2B71CA4EBD85B2EC1963711366">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882354</R>
+									<G>0.164705887</G>
+									<B>0.20784314</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableChat</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>300</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Chat</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBX815F032699894A98A45F88D62E44D8AB">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBXBE7D30E705C94FC688B2C1F76FCA93B3">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBXF5F3AE3DE4954E1D968F0B1DA83FC00E">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{D52AFE31-B92A-417F-8C2C-3A8689FF75DA}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+Button.Font = Enum.Font.Oswald
+local Text = "Disable Chat Information: Generates a script that disables Roblox's default chat on all devices. This will also prevent players from chatting in game using Roblox's default ChatService."
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="TextButton" referent="RBXDFC3975D907B431DBC0FB2D9DA3E2EA7">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableLeaderboard</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>200</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Leaderboard</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBXE2DB1516627044A6A3F9671D3E1E5076">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBX9D323765D83C4E94B87974FEBC494DA6">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBXDA61E25F0F7346AB9AFCFBACB8AA4904">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{BCF5F212-41D0-41AA-AE03-DF5DC99F64E3}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+Button.Font = Enum.Font.Oswald
+local Text = "Disable Leaderboard information: Generates a script that disables Roblox's default leaderboard on all devices."
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="TextButton" referent="RBX8328D6F5A99141EB8345C58B805494F7">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableReset</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>100</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Reset Character</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBXC64E52E5585C45248C88E19A5114F99B">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBX67999D5C884040E78D8941C3EF78763D">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBXA61A767BE8244FDAA1E9EEBAB4EC77B0">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{30D18A6E-2930-4717-8CAE-BC27C4550473}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+Button.Font = Enum.Font.Oswald
+local Text = "Disable Reset Character Information: Generates a script that disables Roblox's default Reset Character function on all devices. All players will lose the ability to manually reset their characters."
+
+local Disabled = false
+
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+	
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="ImageLabel" referent="RBX1A4C2F04493B4118A512D3F091986703">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<token name="BorderMode">2</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<Content name="Image"><null></null></Content>
+								<Color3 name="ImageColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<Vector2 name="ImageRectOffset">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Vector2 name="ImageRectSize">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<string name="Name">Line</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>0</YO>
+								</UDim2>
+								<token name="ResampleMode">0</token>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<token name="ScaleType">0</token>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<Rect2D name="SliceCenter">
+									<min>
+										<X>0</X>
+										<Y>0</Y>
+									</min>
+									<max>
+										<X>0</X>
+										<Y>0</Y>
+									</max>
+								</Rect2D>
+								<float name="SliceScale">1</float>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<UDim2 name="TileSize">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>0</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBX21816FCEBBF44B61BC77BA35D685E013">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">40</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/RobotoCondensed.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/RobotoCondensed-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">0</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<string name="Name">Title</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<bool name="RichText">false</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>75</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">StarterGui</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">26</float>
+								<Color3 name="TextStrokeColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="TextStrokeTransparency">0</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+						<Item class="TextButton" referent="RBX726D96F5F284412C8F4A1ADF2DF31DED">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882354</R>
+									<G>0.164705887</G>
+									<B>0.20784314</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableBadgeNotification</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>400</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Badge Notification</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBX6CF71FFDEA724EDD885F50743FF25EE9">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBXB9A4998D72C34A32ACDCA194E567C3F5">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBXF8E8702C9D8B4F22A5F38D46F762EA5D">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{EA97B0F5-651F-43F9-BEA4-82A5D6E22FA8}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+Button.Font = Enum.Font.Oswald
+local Text = [[Disable Badge Notification Information: Disables the default "Badge Awarded" notification.]]
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+					</Item>
+					<Item class="TextButton" referent="RBX9B022F264C824429987BCBD4E2A97233">
+						<Properties>
+							<bool name="Active">true</bool>
+							<Vector2 name="AnchorPoint">
+								<X>0.5</X>
+								<Y>0</Y>
+							</Vector2>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="AutoButtonColor">true</bool>
+							<bool name="AutoLocalize">true</bool>
+							<token name="AutomaticSize">0</token>
+							<Color3 name="BackgroundColor3">
+								<R>1</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">
+								<R>0.105882362</R>
+								<G>0.164705887</G>
+								<B>0.207843155</B>
+							</Color3>
+							<token name="BorderMode">0</token>
+							<int name="BorderSizePixel">10</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<token name="Font">36</token>
+							<Font name="FontFace">
+								<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+								<Weight>400</Weight>
+								<Style>Normal</Style>
+								<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+							</Font>
+							<int name="LayoutOrder">10</int>
+							<float name="LineHeight">1</float>
+							<int name="MaxVisibleGraphemes">-1</int>
+							<bool name="Modal">false</bool>
+							<string name="Name">ResetAll</string>
+							<Ref name="NextSelectionDown">null</Ref>
+							<Ref name="NextSelectionLeft">null</Ref>
+							<Ref name="NextSelectionRight">null</Ref>
+							<Ref name="NextSelectionUp">null</Ref>
+							<UDim2 name="Position">
+								<XS>0.5</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>1150</YO>
+							</UDim2>
+							<bool name="RichText">true</bool>
+							<Ref name="RootLocalizationTable">null</Ref>
+							<float name="Rotation">0</float>
+							<bool name="Selectable">true</bool>
+							<bool name="Selected">false</bool>
+							<token name="SelectionBehaviorDown">0</token>
+							<token name="SelectionBehaviorLeft">0</token>
+							<token name="SelectionBehaviorRight">0</token>
+							<token name="SelectionBehaviorUp">0</token>
+							<bool name="SelectionGroup">false</bool>
+							<Ref name="SelectionImageObject">null</Ref>
+							<int name="SelectionOrder">0</int>
+							<UDim2 name="Size">
+								<XS>0</XS>
+								<XO>200</XO>
+								<YS>0</YS>
+								<YO>50</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<int64 name="SourceAssetId">-1</int64>
+							<token name="Style">0</token>
+							<BinaryString name="Tags"></BinaryString>
+							<string name="Text">Reset All</string>
+							<Color3 name="TextColor3">
+								<R>0</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<bool name="TextScaled">true</bool>
+							<float name="TextSize">14</float>
+							<Color3 name="TextStrokeColor3">
+								<R>0</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<float name="TextStrokeTransparency">1</float>
+							<float name="TextTransparency">0</float>
+							<token name="TextTruncate">0</token>
+							<bool name="TextWrapped">true</bool>
+							<token name="TextXAlignment">2</token>
+							<token name="TextYAlignment">1</token>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+						<Item class="Folder" referent="RBX358A15D232614FFDBD9F987583FCCAC7">
+							<Properties>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<string name="Name">InformationStuff</string>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+							</Properties>
+							<Item class="TextButton" referent="RBX8D4399BC14E44E438CEC746DB4044B36">
+								<Properties>
+									<bool name="Active">true</bool>
+									<Vector2 name="AnchorPoint">
+										<X>1</X>
+										<Y>0</Y>
+									</Vector2>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<bool name="AutoButtonColor">true</bool>
+									<bool name="AutoLocalize">true</bool>
+									<token name="AutomaticSize">0</token>
+									<Color3 name="BackgroundColor3">
+										<R>1</R>
+										<G>1</G>
+										<B>1</B>
+									</Color3>
+									<float name="BackgroundTransparency">0</float>
+									<Color3 name="BorderColor3">
+										<R>0.105882362</R>
+										<G>0.164705887</G>
+										<B>0.207843155</B>
+									</Color3>
+									<token name="BorderMode">0</token>
+									<int name="BorderSizePixel">1</int>
+									<bool name="ClipsDescendants">false</bool>
+									<bool name="Draggable">false</bool>
+									<token name="Font">3</token>
+									<Font name="FontFace">
+										<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+										<Weight>400</Weight>
+										<Style>Normal</Style>
+										<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+									</Font>
+									<int name="LayoutOrder">0</int>
+									<float name="LineHeight">1</float>
+									<int name="MaxVisibleGraphemes">-1</int>
+									<bool name="Modal">false</bool>
+									<string name="Name">Information</string>
+									<Ref name="NextSelectionDown">null</Ref>
+									<Ref name="NextSelectionLeft">null</Ref>
+									<Ref name="NextSelectionRight">null</Ref>
+									<Ref name="NextSelectionUp">null</Ref>
+									<UDim2 name="Position">
+										<XS>1</XS>
+										<XO>20</XO>
+										<YS>0</YS>
+										<YO>-20</YO>
+									</UDim2>
+									<bool name="RichText">false</bool>
+									<Ref name="RootLocalizationTable">null</Ref>
+									<float name="Rotation">0</float>
+									<bool name="Selectable">true</bool>
+									<bool name="Selected">false</bool>
+									<token name="SelectionBehaviorDown">0</token>
+									<token name="SelectionBehaviorLeft">0</token>
+									<token name="SelectionBehaviorRight">0</token>
+									<token name="SelectionBehaviorUp">0</token>
+									<bool name="SelectionGroup">false</bool>
+									<Ref name="SelectionImageObject">null</Ref>
+									<int name="SelectionOrder">0</int>
+									<UDim2 name="Size">
+										<XS>0</XS>
+										<XO>20</XO>
+										<YS>0</YS>
+										<YO>20</YO>
+									</UDim2>
+									<token name="SizeConstraint">0</token>
+									<int64 name="SourceAssetId">-1</int64>
+									<token name="Style">0</token>
+									<BinaryString name="Tags"></BinaryString>
+									<string name="Text">?</string>
+									<Color3 name="TextColor3">
+										<R>0</R>
+										<G>0</G>
+										<B>0</B>
+									</Color3>
+									<bool name="TextScaled">true</bool>
+									<float name="TextSize">14</float>
+									<Color3 name="TextStrokeColor3">
+										<R>0</R>
+										<G>0</G>
+										<B>0</B>
+									</Color3>
+									<float name="TextStrokeTransparency">1</float>
+									<float name="TextTransparency">0</float>
+									<token name="TextTruncate">0</token>
+									<bool name="TextWrapped">true</bool>
+									<token name="TextXAlignment">2</token>
+									<token name="TextYAlignment">1</token>
+									<bool name="Visible">true</bool>
+									<int name="ZIndex">1</int>
+								</Properties>
+								<Item class="Script" referent="RBX7CDFEC3966E14ED7A7E4E4B1852FDE39">
+									<Properties>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="Disabled">false</bool>
+										<Content name="LinkedSource"><null></null></Content>
+										<string name="Name">InformationScript</string>
+										<token name="RunContext">0</token>
+										<string name="ScriptGuid">{49B07BC7-6815-4D2A-9795-DFACB2CB79F7}</string>
+										<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+Button.Font = Enum.Font.Oswald
+local Text = "Reset All Information: Delete all the generated scripts from this plugin."
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+										<int64 name="SourceAssetId">-1</int64>
+										<BinaryString name="Tags"></BinaryString>
+									</Properties>
+								</Item>
+							</Item>
+						</Item>
+					</Item>
+					<Item class="Folder" referent="RBX89CCB7A9547040848A68F8C894C03CC3">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<string name="Name">ServerScriptsService</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+						<Item class="ImageLabel" referent="RBX7ACA5EF4BA214189854C48439E5B7706">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<token name="BorderMode">2</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<Content name="Image"><null></null></Content>
+								<Color3 name="ImageColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<Vector2 name="ImageRectOffset">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Vector2 name="ImageRectSize">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<string name="Name">Line</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>700</YO>
+								</UDim2>
+								<token name="ResampleMode">0</token>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<token name="ScaleType">0</token>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<Rect2D name="SliceCenter">
+									<min>
+										<X>0</X>
+										<Y>0</Y>
+									</min>
+									<max>
+										<X>0</X>
+										<Y>0</Y>
+									</max>
+								</Rect2D>
+								<float name="SliceScale">1</float>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<UDim2 name="TileSize">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>0</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+						<Item class="TextButton" referent="RBXA89F29AD5CFF49C582E1FD746701529A">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882354</R>
+									<G>0.164705887</G>
+									<B>0.20784314</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisablePlayerCollision</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>800</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Player Collision</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBXA81BFD0CDEC543A4999C4C20E03D67C7">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBX38347B7397344716B771A06F4CC317E7">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBX42D778A141024D90B2385E666EB4B09A">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{5227DE65-235B-4ED9-9FDD-BFA6F12733F6}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+wait(1)
+Button.Font = Enum.Font.Oswald
+local Text = "Disable Player Collision: Disable Player Collisions to prevent players from colliding against each other during gameplay."
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="TextLabel" referent="RBX3157F44C28EC4C1BA5209E28C53BF818">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">40</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/RobotoCondensed.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/RobotoCondensed-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">0</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<string name="Name">Title</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>710</YO>
+								</UDim2>
+								<bool name="RichText">false</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>75</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">ServerScriptService</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">26</float>
+								<Color3 name="TextStrokeColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="TextStrokeTransparency">0</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="ImageLabel" referent="RBX567129E994144582B1E7F5CAECF7CD1A">
+						<Properties>
+							<bool name="Active">false</bool>
+							<Vector2 name="AnchorPoint">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="AutoLocalize">true</bool>
+							<token name="AutomaticSize">0</token>
+							<Color3 name="BackgroundColor3">
+								<R>0</R>
+								<G>0</G>
+								<B>0</B>
+							</Color3>
+							<float name="BackgroundTransparency">0</float>
+							<Color3 name="BorderColor3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="BorderMode">2</token>
+							<int name="BorderSizePixel">1</int>
+							<bool name="ClipsDescendants">false</bool>
+							<bool name="Draggable">false</bool>
+							<Content name="Image"><null></null></Content>
+							<Color3 name="ImageColor3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<Vector2 name="ImageRectOffset">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<Vector2 name="ImageRectSize">
+								<X>0</X>
+								<Y>0</Y>
+							</Vector2>
+							<float name="ImageTransparency">0</float>
+							<int name="LayoutOrder">0</int>
+							<string name="Name">EndLine</string>
+							<Ref name="NextSelectionDown">null</Ref>
+							<Ref name="NextSelectionLeft">null</Ref>
+							<Ref name="NextSelectionRight">null</Ref>
+							<Ref name="NextSelectionUp">null</Ref>
+							<UDim2 name="Position">
+								<XS>0</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>1100</YO>
+							</UDim2>
+							<token name="ResampleMode">0</token>
+							<Ref name="RootLocalizationTable">null</Ref>
+							<float name="Rotation">0</float>
+							<token name="ScaleType">0</token>
+							<bool name="Selectable">false</bool>
+							<token name="SelectionBehaviorDown">0</token>
+							<token name="SelectionBehaviorLeft">0</token>
+							<token name="SelectionBehaviorRight">0</token>
+							<token name="SelectionBehaviorUp">0</token>
+							<bool name="SelectionGroup">false</bool>
+							<Ref name="SelectionImageObject">null</Ref>
+							<int name="SelectionOrder">0</int>
+							<UDim2 name="Size">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>0</YS>
+								<YO>10</YO>
+							</UDim2>
+							<token name="SizeConstraint">0</token>
+							<Rect2D name="SliceCenter">
+								<min>
+									<X>0</X>
+									<Y>0</Y>
+								</min>
+								<max>
+									<X>0</X>
+									<Y>0</Y>
+								</max>
+							</Rect2D>
+							<float name="SliceScale">1</float>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<UDim2 name="TileSize">
+								<XS>1</XS>
+								<XO>0</XO>
+								<YS>1</YS>
+								<YO>0</YO>
+							</UDim2>
+							<bool name="Visible">true</bool>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Folder" referent="RBX643D0AA56EC8457590E84C0B369A7720">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<string name="Name">StarterPlayerScripts</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+						<Item class="TextButton" referent="RBXC3A7BDA3A9B543BE883D67225ABB86DD">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882354</R>
+									<G>0.164705887</G>
+									<B>0.20784314</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableTopBar</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>600</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Top Bar</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBX0BFD4A9A89424931BC12133AB9DC52AE">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBX0D4E25FBFE67499A942284F0933AB3F2">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBX6B66333EABD546C2AA02170A9DC90C98">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{6F97EF56-939C-42E7-829F-67111F51A154}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+local Text = [[Disable Badge Notification Information: Disables the top bar. Disabling the topbar will also disable all CoreGuis, such as the chat, inventory and the leaderboard. This is mainly used for making custom top bars.]]
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="TextLabel" referent="RBX57D090FCF5364327833DF5B16A4D84E1">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">40</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/RobotoCondensed.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/RobotoCondensed-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">0</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<string name="Name">Title</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>510</YO>
+								</UDim2>
+								<bool name="RichText">false</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>75</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">StarterPlayerScripts</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">26</float>
+								<Color3 name="TextStrokeColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="TextStrokeTransparency">0</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+						<Item class="ImageLabel" referent="RBX7F58FACB13594CE3890B6AA9D1786FE7">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<token name="BorderMode">2</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<Content name="Image"><null></null></Content>
+								<Color3 name="ImageColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<Vector2 name="ImageRectOffset">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Vector2 name="ImageRectSize">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<string name="Name">Line</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>500</YO>
+								</UDim2>
+								<token name="ResampleMode">0</token>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<token name="ScaleType">0</token>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<Rect2D name="SliceCenter">
+									<min>
+										<X>0</X>
+										<Y>0</Y>
+									</min>
+									<max>
+										<X>0</X>
+										<Y>0</Y>
+									</max>
+								</Rect2D>
+								<float name="SliceScale">1</float>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<UDim2 name="TileSize">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>0</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+					</Item>
+					<Item class="Folder" referent="RBXD5FA1059A447459790714A0AC5E00A8B">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<string name="Name">ReplicatedFirst</string>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+						<Item class="TextButton" referent="RBX2B5E2662C859437784AAC56440D6B37F">
+							<Properties>
+								<bool name="Active">true</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoButtonColor">true</bool>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882354</R>
+									<G>0.164705887</G>
+									<B>0.20784314</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">10</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">36</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/Oswald.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/Oswald-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">10</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<bool name="Modal">false</bool>
+								<string name="Name">DisableLoadingScreen</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>1000</YO>
+								</UDim2>
+								<bool name="RichText">true</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">true</bool>
+								<bool name="Selected">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>50</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<token name="Style">0</token>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">Disable Loading Screen</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">true</bool>
+								<float name="TextSize">14</float>
+								<Color3 name="TextStrokeColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="TextStrokeTransparency">1</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+							<Item class="Folder" referent="RBXD67585EA524A437B91E8CA64FC0381F0">
+								<Properties>
+									<BinaryString name="AttributesSerialize"></BinaryString>
+									<string name="Name">InformationStuff</string>
+									<int64 name="SourceAssetId">-1</int64>
+									<BinaryString name="Tags"></BinaryString>
+								</Properties>
+								<Item class="TextButton" referent="RBXFF62ABC75E94409B8ECDA7A8EA5AF177">
+									<Properties>
+										<bool name="Active">true</bool>
+										<Vector2 name="AnchorPoint">
+											<X>1</X>
+											<Y>0</Y>
+										</Vector2>
+										<BinaryString name="AttributesSerialize"></BinaryString>
+										<bool name="AutoButtonColor">true</bool>
+										<bool name="AutoLocalize">true</bool>
+										<token name="AutomaticSize">0</token>
+										<Color3 name="BackgroundColor3">
+											<R>1</R>
+											<G>1</G>
+											<B>1</B>
+										</Color3>
+										<float name="BackgroundTransparency">0</float>
+										<Color3 name="BorderColor3">
+											<R>0.105882362</R>
+											<G>0.164705887</G>
+											<B>0.207843155</B>
+										</Color3>
+										<token name="BorderMode">0</token>
+										<int name="BorderSizePixel">1</int>
+										<bool name="ClipsDescendants">false</bool>
+										<bool name="Draggable">false</bool>
+										<token name="Font">3</token>
+										<Font name="FontFace">
+											<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+											<Weight>400</Weight>
+											<Style>Normal</Style>
+											<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+										</Font>
+										<int name="LayoutOrder">0</int>
+										<float name="LineHeight">1</float>
+										<int name="MaxVisibleGraphemes">-1</int>
+										<bool name="Modal">false</bool>
+										<string name="Name">Information</string>
+										<Ref name="NextSelectionDown">null</Ref>
+										<Ref name="NextSelectionLeft">null</Ref>
+										<Ref name="NextSelectionRight">null</Ref>
+										<Ref name="NextSelectionUp">null</Ref>
+										<UDim2 name="Position">
+											<XS>1</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>-20</YO>
+										</UDim2>
+										<bool name="RichText">false</bool>
+										<Ref name="RootLocalizationTable">null</Ref>
+										<float name="Rotation">0</float>
+										<bool name="Selectable">true</bool>
+										<bool name="Selected">false</bool>
+										<token name="SelectionBehaviorDown">0</token>
+										<token name="SelectionBehaviorLeft">0</token>
+										<token name="SelectionBehaviorRight">0</token>
+										<token name="SelectionBehaviorUp">0</token>
+										<bool name="SelectionGroup">false</bool>
+										<Ref name="SelectionImageObject">null</Ref>
+										<int name="SelectionOrder">0</int>
+										<UDim2 name="Size">
+											<XS>0</XS>
+											<XO>20</XO>
+											<YS>0</YS>
+											<YO>20</YO>
+										</UDim2>
+										<token name="SizeConstraint">0</token>
+										<int64 name="SourceAssetId">-1</int64>
+										<token name="Style">0</token>
+										<BinaryString name="Tags"></BinaryString>
+										<string name="Text">?</string>
+										<Color3 name="TextColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<bool name="TextScaled">true</bool>
+										<float name="TextSize">14</float>
+										<Color3 name="TextStrokeColor3">
+											<R>0</R>
+											<G>0</G>
+											<B>0</B>
+										</Color3>
+										<float name="TextStrokeTransparency">1</float>
+										<float name="TextTransparency">0</float>
+										<token name="TextTruncate">0</token>
+										<bool name="TextWrapped">true</bool>
+										<token name="TextXAlignment">2</token>
+										<token name="TextYAlignment">1</token>
+										<bool name="Visible">true</bool>
+										<int name="ZIndex">1</int>
+									</Properties>
+									<Item class="Script" referent="RBXE7722D46D7954AE58F6DF5EC29B29235">
+										<Properties>
+											<BinaryString name="AttributesSerialize"></BinaryString>
+											<bool name="Disabled">false</bool>
+											<Content name="LinkedSource"><null></null></Content>
+											<string name="Name">InformationScript</string>
+											<token name="RunContext">0</token>
+											<string name="ScriptGuid">{3ACAAD1C-8D2F-480C-88E1-57220318F815}</string>
+											<ProtectedString name="Source"><![CDATA[local Button = script.Parent
+wait(1)
+Button.Font = Enum.Font.Oswald
+
+local Text = "Disable Loading Screen Information: Disables Roblox's default loading screen. Usually used to make custom loading screens."
+
+local Disabled = false
+Button.MouseButton1Click:Connect(function()
+	if not Disabled then
+		Disabled = true
+		print(Text)
+		wait(10)
+		Disabled = false
+	end
+end)]]></ProtectedString>
+											<int64 name="SourceAssetId">-1</int64>
+											<BinaryString name="Tags"></BinaryString>
+										</Properties>
+									</Item>
+								</Item>
+							</Item>
+						</Item>
+						<Item class="ImageLabel" referent="RBX2580D9C580BB4776B3172C1AD4CBA802">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<float name="BackgroundTransparency">0</float>
+								<Color3 name="BorderColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<token name="BorderMode">2</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<Content name="Image"><null></null></Content>
+								<Color3 name="ImageColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<Vector2 name="ImageRectOffset">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<Vector2 name="ImageRectSize">
+									<X>0</X>
+									<Y>0</Y>
+								</Vector2>
+								<float name="ImageTransparency">0</float>
+								<int name="LayoutOrder">0</int>
+								<string name="Name">Line</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>900</YO>
+								</UDim2>
+								<token name="ResampleMode">0</token>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<token name="ScaleType">0</token>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>10</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<Rect2D name="SliceCenter">
+									<min>
+										<X>0</X>
+										<Y>0</Y>
+									</min>
+									<max>
+										<X>0</X>
+										<Y>0</Y>
+									</max>
+								</Rect2D>
+								<float name="SliceScale">1</float>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<UDim2 name="TileSize">
+									<XS>1</XS>
+									<XO>0</XO>
+									<YS>1</YS>
+									<YO>0</YO>
+								</UDim2>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+						<Item class="TextLabel" referent="RBXB8D61E0EE19A4A1DB2F24C4BABDF7EC7">
+							<Properties>
+								<bool name="Active">false</bool>
+								<Vector2 name="AnchorPoint">
+									<X>0.5</X>
+									<Y>0</Y>
+								</Vector2>
+								<BinaryString name="AttributesSerialize"></BinaryString>
+								<bool name="AutoLocalize">true</bool>
+								<token name="AutomaticSize">0</token>
+								<Color3 name="BackgroundColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="BackgroundTransparency">1</float>
+								<Color3 name="BorderColor3">
+									<R>0.105882362</R>
+									<G>0.164705887</G>
+									<B>0.207843155</B>
+								</Color3>
+								<token name="BorderMode">0</token>
+								<int name="BorderSizePixel">1</int>
+								<bool name="ClipsDescendants">false</bool>
+								<bool name="Draggable">false</bool>
+								<token name="Font">40</token>
+								<Font name="FontFace">
+									<Family><url>rbxasset://fonts/families/RobotoCondensed.json</url></Family>
+									<Weight>400</Weight>
+									<Style>Normal</Style>
+									<CachedFaceId><url>rbxasset://fonts/RobotoCondensed-Regular.ttf</url></CachedFaceId>
+								</Font>
+								<int name="LayoutOrder">0</int>
+								<float name="LineHeight">1</float>
+								<int name="MaxVisibleGraphemes">-1</int>
+								<string name="Name">Title</string>
+								<Ref name="NextSelectionDown">null</Ref>
+								<Ref name="NextSelectionLeft">null</Ref>
+								<Ref name="NextSelectionRight">null</Ref>
+								<Ref name="NextSelectionUp">null</Ref>
+								<UDim2 name="Position">
+									<XS>0.5</XS>
+									<XO>0</XO>
+									<YS>0</YS>
+									<YO>910</YO>
+								</UDim2>
+								<bool name="RichText">false</bool>
+								<Ref name="RootLocalizationTable">null</Ref>
+								<float name="Rotation">0</float>
+								<bool name="Selectable">false</bool>
+								<token name="SelectionBehaviorDown">0</token>
+								<token name="SelectionBehaviorLeft">0</token>
+								<token name="SelectionBehaviorRight">0</token>
+								<token name="SelectionBehaviorUp">0</token>
+								<bool name="SelectionGroup">false</bool>
+								<Ref name="SelectionImageObject">null</Ref>
+								<int name="SelectionOrder">0</int>
+								<UDim2 name="Size">
+									<XS>0</XS>
+									<XO>200</XO>
+									<YS>0</YS>
+									<YO>75</YO>
+								</UDim2>
+								<token name="SizeConstraint">0</token>
+								<int64 name="SourceAssetId">-1</int64>
+								<BinaryString name="Tags"></BinaryString>
+								<string name="Text">ReplicatedFirst</string>
+								<Color3 name="TextColor3">
+									<R>0</R>
+									<G>0</G>
+									<B>0</B>
+								</Color3>
+								<bool name="TextScaled">false</bool>
+								<float name="TextSize">26</float>
+								<Color3 name="TextStrokeColor3">
+									<R>1</R>
+									<G>1</G>
+									<B>1</B>
+								</Color3>
+								<float name="TextStrokeTransparency">0</float>
+								<float name="TextTransparency">0</float>
+								<token name="TextTruncate">0</token>
+								<bool name="TextWrapped">true</bool>
+								<token name="TextXAlignment">2</token>
+								<token name="TextYAlignment">1</token>
+								<bool name="Visible">true</bool>
+								<int name="ZIndex">1</int>
+							</Properties>
+						</Item>
+					</Item>
+				</Item>
+				<Item class="Folder" referent="RBX5EAEE81554E0408B9CC80E91BCBFAA72">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<string name="Name">Scripts</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+					<Item class="LocalScript" referent="RBXF9FC7D7298AE40118503CC4728792B9A">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DeviceDetector</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{BBD728C8-8FCB-4AA2-A45B-EF94291480F3}</string>
+							<ProtectedString name="Source"><![CDATA[local Events = game.Workspace.Events
+
+local ReplicatedStorage = game.ReplicatedStorage
+local DeviceStatus = ReplicatedStorage.DeviceStatus
+
+local isDesktop = game:getService("UserInputService").KeyboardEnabled --1
+local isMobile = game:getService("UserInputService").TouchEnabled --2
+local isConsole = game:getService("UserInputService").GamepadEnabled --3
+
+wait(1)
+if isDesktop then
+	DeviceStatus.Value = 1
+	print("DeviceStatus - The Player joined as a PC player!")
+	
+elseif isMobile then
+	DeviceStatus.Value = 2
+	print("DeviceStatus - The player joined as a Mobile player!")
+	
+elseif isConsole then
+	DeviceStatus.Value = 3
+	print("DeviceStatus - The player joined as a Console player!")
+
+end]]></ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBX9B3660EB19D44CFF88F25BFF2501B8FB">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableLeaderboardSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{942FFE9B-1646-4DB5-A185-B43DE4B567A2}</string>
+							<ProtectedString name="Source"><![CDATA[game:WaitForChild("StarterGui")
+
+game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)]]></ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBX5180DA1C6B094E549DED379CAC3C2470">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableResetSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{3C4E9B19-97D1-47B6-AF76-409E995279A4}</string>
+							<ProtectedString name="Source"><![CDATA[local StarterGui = game:WaitForChild("StarterGui")
+
+StarterGui:SetCore("ResetButtonCallback",false)]]></ProtectedString>
+							<int64 name="SourceAssetId">4919812351</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBXC0EB171F22D2492D88368C07429F2DB9">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableChatSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{E9A6679D-BDF4-4F28-9037-1A44F2F1AC59}</string>
+							<ProtectedString name="Source"><![CDATA[local StarterGui = game:GetService("StarterGui")
+
+game:WaitForChild("Players")
+
+StarterGui:SetCoreGuiEnabled("Chat", false)]]></ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="Script" referent="RBX0A103119B8B543AFA921C488E7284EAB">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisablePlayerCollisionSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{8E9DDEC9-480E-48A7-857F-47725359B14C}</string>
+							<ProtectedString name="Source"><![CDATA[local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
+ 
+local playerCollisionGroupName = "Players"
+PhysicsService:CreateCollisionGroup(playerCollisionGroupName)
+PhysicsService:CollisionGroupSetCollidable(playerCollisionGroupName, playerCollisionGroupName, false)
+ 
+local previousCollisionGroups = {}
+ 
+local function setCollisionGroup(object)
+  if object:IsA("BasePart") then
+    previousCollisionGroups[object] = object.CollisionGroupId
+    PhysicsService:SetPartCollisionGroup(object, playerCollisionGroupName)
+  end
+end
+ 
+local function setCollisionGroupRecursive(object)
+  setCollisionGroup(object)
+ 
+  for _, child in ipairs(object:GetChildren()) do
+    setCollisionGroupRecursive(child)
+  end
+end
+ 
+local function resetCollisionGroup(object)
+  local previousCollisionGroupId = previousCollisionGroups[object]
+  if not previousCollisionGroupId then return end 
+ 
+  local previousCollisionGroupName = PhysicsService:GetCollisionGroupName(previousCollisionGroupId)
+  if not previousCollisionGroupName then return end
+ 
+  PhysicsService:SetPartCollisionGroup(object, previousCollisionGroupName)
+  previousCollisionGroups[object] = nil
+end
+ 
+local function onCharacterAdded(character)
+  setCollisionGroupRecursive(character)
+ 
+  character.DescendantAdded:Connect(setCollisionGroup)
+  character.DescendantRemoving:Connect(resetCollisionGroup)
+end
+ 
+local function onPlayerAdded(player)
+  player.CharacterAdded:Connect(onCharacterAdded)
+end
+ 
+Players.PlayerAdded:Connect(onPlayerAdded)]]></ProtectedString>
+							<int64 name="SourceAssetId">2176459411</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBXA25ACA2EC1CB41E894531CF22F428454">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableBadgeNotificationSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{7BB478B5-34F6-445A-B7BF-A4B493D478F0}</string>
+							<ProtectedString name="Source"><![CDATA[local StarterGui = game:WaitForChild("StarterGui")
+
+StarterGui:SetCore("BadgesNotificationsActive", false)]]></ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBX3F7C713950064A599D03D901DF42687D">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableTopBarSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{A2842CA7-07D9-4890-9544-F840FE13B22A}</string>
+							<ProtectedString name="Source"><![CDATA[wait()
+pcall(function()
+	local starterGui = game:GetService("StarterGui")
+	starterGui:SetCore("TopbarEnabled", false)
+end)]]></ProtectedString>
+							<int64 name="SourceAssetId">4919812351</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+					<Item class="LocalScript" referent="RBXF9D3A4761A534F848D2AA32BF7321380">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">true</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DisableLoadingScreenSource</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{1425C806-B377-4359-9372-A7C5D51FE89B}</string>
+							<ProtectedString name="Source">game.ReplicatedFirst:RemoveDefaultLoadingScreen()</ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="TextLabel" referent="RBXDC84BAE1451A4FFD826AFD642111F6F2">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>1</Y>
+						</Vector2>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<bool name="AutoLocalize">true</bool>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<float name="BackgroundTransparency">1</float>
+						<Color3 name="BorderColor3">
+							<R>0.105882362</R>
+							<G>0.164705887</G>
+							<B>0.207843155</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">1</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">44</token>
+						<Font name="FontFace">
+							<Family><url>rbxasset://fonts/families/TitilliumWeb.json</url></Family>
+							<Weight>400</Weight>
+							<Style>Normal</Style>
+							<CachedFaceId><url>rbxasset://fonts/TitilliumWeb-Regular.ttf</url></CachedFaceId>
+						</Font>
+						<int name="LayoutOrder">0</int>
+						<float name="LineHeight">1</float>
+						<int name="MaxVisibleGraphemes">-1</int>
+						<string name="Name">PluginInformation</string>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>-75</YO>
+						</UDim2>
+						<bool name="RichText">false</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>-10</XO>
+							<YS>0</YS>
+							<YO>300</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+						<string name="Text">Description</string>
+						<Color3 name="TextColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<bool name="TextScaled">true</bool>
+						<float name="TextSize">14</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">0</token>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+					<Item class="Script" referent="RBX0EE64AF8BEE249419B2C900FA95FD502">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<bool name="Disabled">false</bool>
+							<Content name="LinkedSource"><null></null></Content>
+							<string name="Name">DescriptionString</string>
+							<token name="RunContext">0</token>
+							<string name="ScriptGuid">{B8E52FC2-1883-4455-BF0C-AF6EED40495D}</string>
+							<ProtectedString name="Source"><![CDATA[-- Script that defines the plugin information's contents.
+local TextLabel = script.Parent
+TextLabel.Font = Enum.Font.TitilliumWeb
+
+local Contents = [[Rapidly generate scripts that disable Roblox's core features such as "reset character", "chat", and etc.
+
+This is a pretty new & simple plugin, and it is just a friendly "shortcut" for people who develop games that don't allow the player to use some core features. If there are any other core features that can be toggled, let me know in the plugin's comment section.
+
+1.7.0:
+- NEW Disable loading screen button
+- Reset button doesn't reset StarterPlayerScripts Core Features bug fixed]]
+
+TextLabel.Text = Contents]]></ProtectedString>
+							<int64 name="SourceAssetId">-1</int64>
+							<BinaryString name="Tags"></BinaryString>
+						</Properties>
+					</Item>
+				</Item>
+			</Item>
+			<Item class="Frame" referent="RBX3C3E4A78A6DA4E448C5C92E3379E38F3">
+				<Properties>
+					<bool name="Active">false</bool>
+					<Vector2 name="AnchorPoint">
+						<X>0</X>
+						<Y>1</Y>
+					</Vector2>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<bool name="AutoLocalize">true</bool>
+					<token name="AutomaticSize">0</token>
+					<Color3 name="BackgroundColor3">
+						<R>1</R>
+						<G>1</G>
+						<B>1</B>
+					</Color3>
+					<float name="BackgroundTransparency">1</float>
+					<Color3 name="BorderColor3">
+						<R>0.105882362</R>
+						<G>0.164705887</G>
+						<B>0.207843155</B>
+					</Color3>
+					<token name="BorderMode">0</token>
+					<int name="BorderSizePixel">1</int>
+					<bool name="ClipsDescendants">false</bool>
+					<bool name="Draggable">false</bool>
+					<int name="LayoutOrder">0</int>
+					<string name="Name">WatermarkFrame</string>
+					<Ref name="NextSelectionDown">null</Ref>
+					<Ref name="NextSelectionLeft">null</Ref>
+					<Ref name="NextSelectionRight">null</Ref>
+					<Ref name="NextSelectionUp">null</Ref>
+					<UDim2 name="Position">
+						<XS>0</XS>
+						<XO>0</XO>
+						<YS>1</YS>
+						<YO>-5</YO>
+					</UDim2>
+					<Ref name="RootLocalizationTable">null</Ref>
+					<float name="Rotation">0</float>
+					<bool name="Selectable">false</bool>
+					<token name="SelectionBehaviorDown">0</token>
+					<token name="SelectionBehaviorLeft">0</token>
+					<token name="SelectionBehaviorRight">0</token>
+					<token name="SelectionBehaviorUp">0</token>
+					<bool name="SelectionGroup">false</bool>
+					<Ref name="SelectionImageObject">null</Ref>
+					<int name="SelectionOrder">0</int>
+					<UDim2 name="Size">
+						<XS>0.5</XS>
+						<XO>0</XO>
+						<YS>0</YS>
+						<YO>65</YO>
+					</UDim2>
+					<token name="SizeConstraint">0</token>
+					<int64 name="SourceAssetId">-1</int64>
+					<token name="Style">0</token>
+					<BinaryString name="Tags"></BinaryString>
+					<bool name="Visible">true</bool>
+					<int name="ZIndex">1</int>
+				</Properties>
+				<Item class="TextLabel" referent="RBXC7E6B6027FEE424BBFDC357C71C81815">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>1</Y>
+						</Vector2>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<bool name="AutoLocalize">true</bool>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="BackgroundTransparency">0.5</float>
+						<Color3 name="BorderColor3">
+							<R>0.105882362</R>
+							<G>0.164705887</G>
+							<B>0.207843155</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">1</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">3</token>
+						<Font name="FontFace">
+							<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+							<Weight>400</Weight>
+							<Style>Normal</Style>
+							<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+						</Font>
+						<int name="LayoutOrder">0</int>
+						<float name="LineHeight">1</float>
+						<int name="MaxVisibleGraphemes">-1</int>
+						<string name="Name">Watermark</string>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>-35</YO>
+						</UDim2>
+						<bool name="RichText">false</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+						<string name="Text">Plugin made by: Furious_Cucomber</string>
+						<Color3 name="TextColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<bool name="TextScaled">true</bool>
+						<float name="TextSize">14</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">0</token>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+				<Item class="TextLabel" referent="RBXF57FF2854193468AA0AEE82AD113792C">
+					<Properties>
+						<bool name="Active">false</bool>
+						<Vector2 name="AnchorPoint">
+							<X>0</X>
+							<Y>1</Y>
+						</Vector2>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<bool name="AutoLocalize">true</bool>
+						<token name="AutomaticSize">0</token>
+						<Color3 name="BackgroundColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="BackgroundTransparency">0.5</float>
+						<Color3 name="BorderColor3">
+							<R>0.105882362</R>
+							<G>0.164705887</G>
+							<B>0.207843155</B>
+						</Color3>
+						<token name="BorderMode">0</token>
+						<int name="BorderSizePixel">1</int>
+						<bool name="ClipsDescendants">false</bool>
+						<bool name="Draggable">false</bool>
+						<token name="Font">3</token>
+						<Font name="FontFace">
+							<Family><url>rbxasset://fonts/families/SourceSansPro.json</url></Family>
+							<Weight>400</Weight>
+							<Style>Normal</Style>
+							<CachedFaceId><url>rbxasset://fonts/SourceSansPro-Regular.ttf</url></CachedFaceId>
+						</Font>
+						<int name="LayoutOrder">0</int>
+						<float name="LineHeight">1</float>
+						<int name="MaxVisibleGraphemes">-1</int>
+						<string name="Name">YTWatermark</string>
+						<Ref name="NextSelectionDown">null</Ref>
+						<Ref name="NextSelectionLeft">null</Ref>
+						<Ref name="NextSelectionRight">null</Ref>
+						<Ref name="NextSelectionUp">null</Ref>
+						<UDim2 name="Position">
+							<XS>0</XS>
+							<XO>0</XO>
+							<YS>1</YS>
+							<YO>0</YO>
+						</UDim2>
+						<bool name="RichText">false</bool>
+						<Ref name="RootLocalizationTable">null</Ref>
+						<float name="Rotation">0</float>
+						<bool name="Selectable">false</bool>
+						<token name="SelectionBehaviorDown">0</token>
+						<token name="SelectionBehaviorLeft">0</token>
+						<token name="SelectionBehaviorRight">0</token>
+						<token name="SelectionBehaviorUp">0</token>
+						<bool name="SelectionGroup">false</bool>
+						<Ref name="SelectionImageObject">null</Ref>
+						<int name="SelectionOrder">0</int>
+						<UDim2 name="Size">
+							<XS>1</XS>
+							<XO>0</XO>
+							<YS>0</YS>
+							<YO>30</YO>
+						</UDim2>
+						<token name="SizeConstraint">0</token>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+						<string name="Text">YouTube: Geody Entertainment</string>
+						<Color3 name="TextColor3">
+							<R>1</R>
+							<G>1</G>
+							<B>1</B>
+						</Color3>
+						<bool name="TextScaled">true</bool>
+						<float name="TextSize">14</float>
+						<Color3 name="TextStrokeColor3">
+							<R>0</R>
+							<G>0</G>
+							<B>0</B>
+						</Color3>
+						<float name="TextStrokeTransparency">1</float>
+						<float name="TextTransparency">0</float>
+						<token name="TextTruncate">0</token>
+						<bool name="TextWrapped">true</bool>
+						<token name="TextXAlignment">2</token>
+						<token name="TextYAlignment">1</token>
+						<bool name="Visible">true</bool>
+						<int name="ZIndex">1</int>
+					</Properties>
+				</Item>
+			</Item>
+			<Item class="Folder" referent="RBX2B1549105B3F4136B6F5C3D17CFE0925">
+				<Properties>
+					<BinaryString name="AttributesSerialize"></BinaryString>
+					<string name="Name">ChangelogStuff</string>
+					<int64 name="SourceAssetId">-1</int64>
+					<BinaryString name="Tags"></BinaryString>
+				</Properties>
+				<Item class="Folder" referent="RBX46BAC336BAF94125A257DE33E37E1533">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<string name="Name">Icons</string>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+					<Item class="Decal" referent="RBX938BC2A25E364C27AC9B47C7090FDDEA">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<Color3 name="Color3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="Face">5</token>
+							<string name="Name">NewIcon</string>
+							<int64 name="SourceAssetId">10270196598</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<Content name="Texture"><url>http://www.roblox.com/asset/?id=10270196572</url></Content>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Decal" referent="RBX7E4B417BE6F442358FFDBF8EFB394FE3">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<Color3 name="Color3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="Face">5</token>
+							<string name="Name">OldIcon</string>
+							<int64 name="SourceAssetId">10259404317</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<Content name="Texture"><url>http://www.roblox.com/asset/?id=10259404261</url></Content>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Decal" referent="RBX5239EF3D83DC45F9A9AA4CF0187B2609">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<Color3 name="Color3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="Face">5</token>
+							<string name="Name">Newer Core Typer Icon</string>
+							<int64 name="SourceAssetId">10270340656</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<Content name="Texture"><url>http://www.roblox.com/asset/?id=10270340619</url></Content>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Decal" referent="RBX814DE6438F2548A6B70E608EA0A9F707">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<Color3 name="Color3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="Face">5</token>
+							<string name="Name">Changelog Icon</string>
+							<int64 name="SourceAssetId">10270416850</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<Content name="Texture"><url>http://www.roblox.com/asset/?id=10270416806</url></Content>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+					<Item class="Decal" referent="RBX23F3A15F1949488AAA62D39A305805A4">
+						<Properties>
+							<BinaryString name="AttributesSerialize"></BinaryString>
+							<Color3 name="Color3">
+								<R>1</R>
+								<G>1</G>
+								<B>1</B>
+							</Color3>
+							<token name="Face">5</token>
+							<string name="Name">Core Typer Icon 2.0 with big outlines</string>
+							<int64 name="SourceAssetId">10270469095</int64>
+							<BinaryString name="Tags"></BinaryString>
+							<Content name="Texture"><url>http://www.roblox.com/asset/?id=10270469063</url></Content>
+							<float name="Transparency">0</float>
+							<int name="ZIndex">1</int>
+						</Properties>
+					</Item>
+				</Item>
+				<Item class="Script" referent="RBX1A3C69013F7F477E97315B783F57A97F">
+					<Properties>
+						<BinaryString name="AttributesSerialize"></BinaryString>
+						<bool name="Disabled">true</bool>
+						<Content name="LinkedSource"><null></null></Content>
+						<string name="Name">ChangelogSource</string>
+						<token name="RunContext">0</token>
+						<string name="ScriptGuid">{678996B5-F761-4F3C-98DA-2BFC48C4DEC7}</string>
+						<ProtectedString name="Source"><![CDATA[--[[
+░█████╗░██╗░░██╗░█████╗░███╗░░██╗░██████╗░███████╗██╗░░░░░░█████╗░░██████╗░
+██╔══██╗██║░░██║██╔══██╗████╗░██║██╔════╝░██╔════╝██║░░░░░██╔══██╗██╔════╝░
+██║░░╚═╝███████║███████║██╔██╗██║██║░░██╗░█████╗░░██║░░░░░██║░░██║██║░░██╗░
+██║░░██╗██╔══██║██╔══██║██║╚████║██║░░╚██╗██╔══╝░░██║░░░░░██║░░██║██║░░╚██╗
+╚█████╔╝██║░░██║██║░░██║██║░╚███║╚██████╔╝███████╗███████╗╚█████╔╝╚██████╔╝
+░╚════╝░╚═╝░░╚═╝╚═╝░░╚═╝╚═╝░░╚══╝░╚═════╝░╚══════╝╚══════╝░╚════╝░░╚═════╝░
+
+
+| 1.0.0:
+| Date: 2022-07-14
+| - RELEASED NEW PLUGIN
+
+| 1.1.0:
+| Date: 2022-07-15
+| - Bug fixes
+
+| 1.2.0:
+| Date: 2022-07-16
+| - NEW self update announcements inside the output
+| - NEW reset all button
+
+| 1.3.0:
+| Date: 2022-07-17
+| - NEW re-enable features via buttons
+| - NEW plugin information (at the bottom of the UI)
+| - Dark/Light mode friendly (On first launch ONLY)
+| - Improved Gui (Dimensions)
+| - Less output clogs
+
+| 1.4.0:
+| Date: 2022-07-18
+| - Even less output clogs
+| - NEW Disable Player Collisions
+| - Improved Gui (Dividers)
+| - NEW Changelog
+| - NEW icon
+
+| 1.5.0:
+| Date: 2022-07-19
+| - NEW auto sync (Synchronises data in real-time)
+| - NEW version displayed in the title
+| - Toolbar name changed
+
+| 1.6.0:
+| Date: 2022-07-27
+| - NEW Disable Badge Notification button
+| - NEW Disable Top Bar button
+| 
+| 1.6.2:
+| Date: 2022-07-27
+| - Fixed bug with Disable Top Bar Button
+| - Improved Changelogs
+
+| 1.7.0 (Current version):
+| Date: 2022-07-29
+| - NEW Disable loading screen button
+| - Reset button doesn't reset StarterPlayerScripts Core Features bug fixed
+
+
+
+
+███████╗██╗░░██╗████████╗██████╗░░█████╗░
+██╔════╝╚██╗██╔╝╚══██╔══╝██╔══██╗██╔══██╗
+█████╗░░░╚███╔╝░░░░██║░░░██████╔╝███████║
+██╔══╝░░░██╔██╗░░░░██║░░░██╔══██╗██╔══██║
+███████╗██╔╝╚██╗░░░██║░░░██║░░██║██║░░██║
+╚══════╝╚═╝░░╚═╝░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░╚═╝
+
+██╗███╗░░██╗███████╗░█████╗░██████╗░███╗░░░███╗░█████╗░████████╗██╗░█████╗░███╗░░██╗
+██║████╗░██║██╔════╝██╔══██╗██╔══██╗████╗░████║██╔══██╗╚══██╔══╝██║██╔══██╗████╗░██║
+██║██╔██╗██║█████╗░░██║░░██║██████╔╝██╔████╔██║███████║░░░██║░░░██║██║░░██║██╔██╗██║
+██║██║╚████║██╔══╝░░██║░░██║██╔══██╗██║╚██╔╝██║██╔══██║░░░██║░░░██║██║░░██║██║╚████║
+██║██║░╚███║██║░░░░░╚█████╔╝██║░░██║██║░╚═╝░██║██║░░██║░░░██║░░░██║╚█████╔╝██║░╚███║
+╚═╝╚═╝░░╚══╝╚═╝░░░░░░╚════╝░╚═╝░░╚═╝╚═╝░░░░░╚═╝╚═╝░░╚═╝░░░╚═╝░░░╚═╝░╚════╝░╚═╝░░╚══╝
+
+
+| Plugin name: CoreScript Generator
+| Plugin link: https://www.roblox.com/library/10261598834/Core-Generator-for-Roblox-Studio
+| Plugin ID: 10261598834
+| Plugin creator: Furious_Cucomber (Display name: GeodyEnt)
+| BIG TEXT letters Font generator: https://fsymbols.com/generators/tarty/
+| DevForum: https://devforum.roblox.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.
+]]]]></ProtectedString>
+						<int64 name="SourceAssetId">-1</int64>
+						<BinaryString name="Tags"></BinaryString>
+					</Properties>
+				</Item>
+			</Item>
+		</Item>
+	</Item>
+</roblox>
